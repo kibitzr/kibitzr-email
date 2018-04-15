@@ -2,31 +2,32 @@
 from setuptools import setup
 
 
-with open('README.rst') as readme_file:
-    readme = readme_file.read()
-
-
 setup(
-    name='kibitzr_keyring',
+    name='kibitzr_gmail',
     version='0.0.1',
-    description="Keyring support for Kibitzr",
-    long_description=readme,
+    description="GMail fetcher for Kibitzr",
+    long_description="TBD",
     author="Peter Demin",
     author_email='kibitzrrr@gmail.com',
-    url='https://github.com/kibitzr/kibitzr-keyring',
-    py_modules=['kibitzr_keyring'],
+    url='https://github.com/kibitzr/kibitzr-gmail',
+    packages=[
+        'kibitzr_gmail',
+    ],
+    package_dir={
+        'kibitzr_gmail': 'kibitzr_gmail',
+    },
     entry_points={
-        'kibitzr.creds': [
-            'keyring=kibitzr_keyring:KeyringCreds',
+        'kibitzr.fetcher': [
+            'fetcher=kibitzr_gmail:email_fetcher',
         ]
     },
     include_package_data=True,
     install_requires=[
-        'keyring',
+        'kibitzr',
     ],
     license="MIT license",
     zip_safe=False,
-    keywords='kibitzr',
+    keywords='kibitzr gmail extension',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
