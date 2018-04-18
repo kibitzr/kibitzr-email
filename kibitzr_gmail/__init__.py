@@ -1,4 +1,4 @@
-from .fetcher import email_fetcher
+from .promoter import EmailPromoter
 
 
-__all__ = (email_fetcher)
+__all__ = (EmailPromoter)

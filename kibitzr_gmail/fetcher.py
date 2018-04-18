@@ -3,12 +3,17 @@ import imaplib
 from email import message_from_string
 from email.header import decode_header
 
+import six
 from kibitzr.conf import settings
 
 from .constants import GMAIL_SSL_HOST, CONF_KEY
 
 
 logger = logging.getLogger(__name__)
+
+
+class UnexpectedResponse(RuntimeError):
+    pass
 
 
 class EmailFetcher(object):
@@ -19,8 +24,12 @@ class EmailFetcher(object):
 
     def fetch_next_email(self):
         self.open_inbox()
-        for mail in self.fetch_emails():
-            return mail
+        try:
+            for mail in self.fetch_emails():
+                if self.matched(mail):
+                    return True, mail
+        except UnexpectedResponse:
+            return False, None
 
     def open_inbox(self):
         self.mailbox = imaplib.IMAP4_SSL(GMAIL_SSL_HOST)
@@ -51,28 +60,43 @@ class EmailFetcher(object):
                     message[header].replace('\r\n', ' ')
                 )[0][0]
                 headers[header] = text
-            body = get_body_text(message)
+            body = StringExtra(get_body_text(message))
             body.headers = headers
             body.uid = uid
             yield body
 
     def fetch_uids(self):
         result, uids_response = self.mailbox.uid('search', None, "ALL")
-        if result != 'ok':
+        if result != 'OK':
             logger.error('Failed to fetch email UIDs: %s',
                          uids_response)
+            raise UnexpectedResponse
         return uids_response[0].split()
 
     def fetch_message(self, uid):
         result, raw_body = self.mailbox.uid('fetch', uid, '(RFC822)')
-        if result != 'ok':
+        if result != 'OK':
             logger.error('Failed to fetch email body: %s',
                          raw_body)
+            raise UnexpectedResponse
         raw_email = raw_body[0][1]
         return message_from_string(raw_email)
 
     def filter_processed(self, uids):
-        return uids
+        return ['33760']
+        # return uids
+
+    def matched(self, mail):
+        for header, expected in self.conf.get('match', {}).items():
+            if not mail.headers[header] == expected:
+                return False
+        return True
+
+
+class StringExtra(six.text_type):
+
+    headers = None
+    uid = None
 
 
 def get_body_text(message):

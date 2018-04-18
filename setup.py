@@ -18,7 +18,7 @@ setup(
     },
     entry_points={
         'kibitzr.fetcher': [
-            'fetcher=kibitzr_gmail:email_fetcher',
+            'fetcher=kibitzr_gmail:EmailPromoter',
         ]
     },
     include_package_data=True,
