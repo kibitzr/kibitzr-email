@@ -39,7 +39,7 @@ class EmailFetcher(object):
 
     def get_credentials(self):
         """Return (user, password) tuple"""
-        credentials = settings().creds.get('gmail', {})
+        credentials = settings().creds.get(CONF_KEY, {})
         user = self.conf.get(CONF_KEY)
         if user:
             return user, credentials[user]
