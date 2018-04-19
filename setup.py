@@ -3,22 +3,22 @@ from setuptools import setup
 
 
 setup(
-    name='kibitzr_gmail',
+    name='kibitzr_email',
     version='0.0.1',
-    description="GMail fetcher for Kibitzr",
+    description="Email fetcher for Kibitzr",
     long_description="TBD",
     author="Peter Demin",
-    author_email='kibitzrrr@gmail.com',
-    url='https://github.com/kibitzr/kibitzr-gmail',
+    author_email='kibitzrrr@email.com',
+    url='https://github.com/kibitzr/kibitzr-email',
     packages=[
-        'kibitzr_gmail',
+        'kibitzr_email',
     ],
     package_dir={
-        'kibitzr_gmail': 'kibitzr_gmail',
+        'kibitzr_email': 'kibitzr_email',
     },
     entry_points={
         'kibitzr.fetcher': [
-            'fetcher=kibitzr_gmail:EmailPromoter',
+            'fetcher=kibitzr_email:EmailPromoter',
         ]
     },
     include_package_data=True,
@@ -27,7 +27,7 @@ setup(
     ],
     license="MIT license",
     zip_safe=False,
-    keywords='kibitzr gmail extension',
+    keywords='kibitzr email extension',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',

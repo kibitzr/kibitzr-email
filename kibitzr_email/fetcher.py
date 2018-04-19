@@ -6,7 +6,7 @@ from email.header import decode_header
 import six
 from kibitzr.conf import settings
 
-from .constants import GMAIL_SSL_HOST, CONF_KEY
+from .constants import EMAIL_SSL_HOST, CONF_KEY
 
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,7 @@ class EmailFetcher(object):
             return False, None
 
     def open_inbox(self):
-        self.mailbox = imaplib.IMAP4_SSL(GMAIL_SSL_HOST)
+        self.mailbox = imaplib.IMAP4_SSL(EMAIL_SSL_HOST)
         user, password = self.get_credentials()
         self.mailbox.login(user, password)
         self.mailbox.select("inbox")
