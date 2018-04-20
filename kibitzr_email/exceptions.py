@@ -1,0 +1,2 @@
+class UnexpectedResponse(RuntimeError):
+    pass

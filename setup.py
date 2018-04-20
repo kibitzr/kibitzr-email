@@ -1,5 +1,14 @@
 #!/usr/bin/env python
+import sys
 from setuptools import setup
+
+
+install_requires=[
+    'kibitzr',
+]
+
+if tuple(sys.version_info) < (3, 2):
+    install_requires.append('pylru')
 
 
 setup(
@@ -22,9 +31,7 @@ setup(
         ]
     },
     include_package_data=True,
-    install_requires=[
-        'kibitzr',
-    ],
+    install_requires=install_requires,
     license="MIT license",
     zip_safe=False,
     keywords='kibitzr email extension',
