@@ -9,6 +9,7 @@ kibitzr-creds.yml
 *.py[cod]
 *$py.class
 /frontpage
+/stash.db
 
 # C extensions
 *.so
