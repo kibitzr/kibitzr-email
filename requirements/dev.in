@@ -1,0 +1,11 @@
+-r test.in
+-r doc.in
+
+bump2version
+wheel
+flake8
+tox
+coverage
+pylint
+pycodestyle
+pip-compile-multi
