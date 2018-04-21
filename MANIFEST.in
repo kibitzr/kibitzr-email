@@ -7,6 +7,7 @@ include CHANGELOG.rst
 include LICENSE
 include README.rst
 include CHANGELOG.md
+include requirements/base.in
 
 recursive-include tests *
 recursive-include kibitzr *

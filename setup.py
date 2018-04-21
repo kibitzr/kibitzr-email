@@ -3,9 +3,9 @@ import sys
 from setuptools import setup
 
 
-install_requires=[
-    'kibitzr',
-]
+with open('requirements/base.in') as fp:
+    install_requires = list(fp)
+
 
 if tuple(sys.version_info) < (3, 2):
     install_requires.append('pylru')
