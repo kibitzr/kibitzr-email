@@ -71,3 +71,4 @@ firefox_profile
 CHANGELOG.rst
 .ipynb_checkpoints
 Session.vim
+emails.sqlite

@@ -4,6 +4,7 @@ from email import message_from_string
 from email.header import decode_header
 
 from .compat import lru_cache
+from .persistence import PersistentUids
 from .exceptions import UnexpectedResponse
 
 
@@ -27,7 +28,6 @@ class CachingMailbox(object):
         self.mailbox = imaplib.IMAP4_SSL(host)
         self.user = user
         self._logged_in = False
-        self._processed = {}
 
     def login(self, password):
         if not self._logged_in:
@@ -37,9 +37,10 @@ class CachingMailbox(object):
 
     def fetch_emails(self, check_name):
         uids = self.fetch_uids()
-        for uid in self.filter_processed(check_name, uids):
+        processed = PersistentUids(self.user, check_name)
+        for uid in processed.only_new(uids):
             yield Message(uid, self.fetch_message(uid))
-            self.mark_as_processed(check_name, uid)
+            processed.save_uid(uid)
 
     def fetch_uids(self):
         result, uids_response = self.mailbox.uid('search', None, "ALL")
@@ -62,13 +63,6 @@ class CachingMailbox(object):
         logger.debug('Fetched message %s body (%s bytes)',
                      uid, len(raw_email))
         return message_from_string(raw_email)
-
-    def mark_as_processed(self, check_name, uid):
-        self._processed.setdefault(check_name, set()).add(uid)
-
-    def filter_processed(self, check_name, uids):
-        processed = self._processed.get(check_name, set())
-        return sorted(set(uids) - processed)
 
 
 class Message(object):
@@ -96,3 +90,7 @@ class Message(object):
                     return part.get_payload()
         elif maintype == 'text':
             return message.get_payload()
+        logging.warning(
+            "Could not find text in the email, returning empty string"
+        )
+        return ''
