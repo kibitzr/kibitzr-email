@@ -12,11 +12,6 @@ class EmailPromoter(BasePromoter):
 
     PRIORITY = PROMOTER_PRIORITY
 
-    def __init__(self, conf):
-        from .fetcher import email_fetcher
-        super(EmailPromoter, self).__init__(conf)
-        self.fetcher_func = email_fetcher
-
     @staticmethod
     def is_applicable(conf):
         """Return whether this promoter is applicable for given conf"""
@@ -25,3 +20,8 @@ class EmailPromoter(BasePromoter):
     def log_announcement(self):
         logger.info(u"Fetching next email for %s",
                     self.conf['name'])
+
+    def fetch(self):
+        from .fetcher import email_fetcher
+        super(EmailPromoter, self).fetch()
+        return email_fetcher(self.conf)
