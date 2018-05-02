@@ -2,7 +2,7 @@ from peewee import SqliteDatabase, Model, CharField
 
 
 SQLITE_FILE = 'emails.sqlite'
-db = SqliteDatabase(SQLITE_FILE)
+database = SqliteDatabase(None)
 
 
 class ProcessedUid(Model):
@@ -12,23 +12,26 @@ class ProcessedUid(Model):
     connected = False
 
     class Meta:
-        database = db
+        database = database
 
     @classmethod
     def connect(cls):
         if not cls.connected:
-            db.connect()
-            db.create_tables([cls])
+            database.connect()
+            database.create_tables([cls])
             cls.connected = True
 
     @classmethod
     def only_new(cls, user_name, check_name, uids):
-        rows = cls.select(cls.uid).where(
+        rows = cls.select().where(
             (cls.check_key == ':'.join((user_name, check_name))) &
-            (cls.uid.not_in(uids))
+            (cls.uid.in_(uids))
         )
-        return [row[0]
-                for row in rows]
+        existing = set([row.uid
+                        for row in rows])
+        return [uid
+                for uid in uids
+                if uid not in existing]
 
     @classmethod
     def save_uid(cls, user_name, check_name, uid):
@@ -37,12 +40,16 @@ class ProcessedUid(Model):
             uid=uid,
         )
 
+    def __repr__(self):
+        return "<ProcessedUid {0} {1}>".format(self.check_key, self.uid)
+
 
 class PersistentUids(object):
 
-    def __init__(self, user_name, check_name):
+    def __init__(self, user_name, check_name, database_name=SQLITE_FILE):
         self.user_name = user_name
         self.check_name = check_name
+        database.init(database_name)
         self._table = ProcessedUid
         self._table.connect()
 
