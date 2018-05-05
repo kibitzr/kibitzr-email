@@ -11,7 +11,7 @@ class ProcessedUid(Model):
 
     connected = False
 
-    class Meta:
+    class Meta(object):
         database = database
 
     @classmethod
@@ -54,11 +54,14 @@ class PersistentUids(object):
         self._table.connect()
 
     def only_new(self, uids):
-        return self._table.only_new(
-            self.user_name,
-            self.check_name,
-            uids,
-        )
+        result = []
+        for uids_chunk in self.chunkify(uids, 512):
+            result.extend(self._table.only_new(
+                self.user_name,
+                self.check_name,
+                uids_chunk,
+            ))
+        return result
 
     def save_uid(self, uid):
         self._table.save_uid(
@@ -66,3 +69,14 @@ class PersistentUids(object):
             self.check_name,
             uid,
         )
+
+    @staticmethod
+    def chunkify(items, size):
+        chunk = []
+        for item in items:
+            chunk.append(item)
+            if len(chunk) >= size:
+                yield chunk
+                chunk = []
+        if chunk:
+            yield chunk
