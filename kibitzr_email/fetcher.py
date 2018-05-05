@@ -22,6 +22,9 @@ class EmailFetcher(object):
         mailbox = self.open_inbox()
         try:
             for message in mailbox.fetch_emails(self.name):
+                logging.debug('Fetched email; from: %s, subject: %s',
+                              message.headers['from'],
+                              message.headers['subject'])
                 if self.matched(message):
                     return True, message.text
         except UnexpectedResponse:
@@ -70,7 +73,9 @@ class EmailFetcher(object):
     def matched(self, mail):
         for header, expected in self.match_rules.items():
             if not mail.headers[header] == expected:
+                logger.debug('Filtered out by %s', header)
                 return False
+        logger.debug('All filters passed')
         return True
 
 
