@@ -9,3 +9,5 @@ coverage
 pylint
 pycodestyle
 pip-compile-multi
+ipython[notebook]
+ipdb
