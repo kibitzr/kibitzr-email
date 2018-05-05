@@ -25,12 +25,14 @@ class CachingMailbox(object):
         return CachingMailbox(host, user)
 
     def __init__(self, host, user):
+        logger.debug('Connecting to %s', host)
         self.mailbox = imaplib.IMAP4_SSL(host)
         self.user = user
         self._logged_in = False
 
     def login(self, password):
         if not self._logged_in:
+            logger.debug('Logging in as %s', self.user)
             self.mailbox.login(self.user, password)
             self.mailbox.select("inbox")
             self._logged_in = True
