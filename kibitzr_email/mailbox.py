@@ -41,8 +41,8 @@ class CachingMailbox(object):
         uids = self.fetch_uids()
         processed = PersistentUids(self.user, check_name)
         for uid in processed.only_new(uids):
-            yield Message(uid, self.fetch_message(uid))
             processed.save_uid(uid)
+            yield Message(uid, self.fetch_message(uid))
 
     def fetch_uids(self):
         result, uids_response = self.mailbox.uid('search', None, "ALL")
