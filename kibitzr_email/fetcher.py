@@ -18,11 +18,22 @@ class EmailFetcher(object):
         self.mailbox = None  # type: imaplib.IMAP4_SSL
         self.load_conf()
 
+    def fetch_by_uid(self, uid):
+        mailbox = self.open_inbox()
+        message = mailbox.fetch_message(uid)
+        logging.debug('Fetched email by UID %s; from: %s, subject: %s',
+                      uid,
+                      message.headers['from'],
+                      message.headers['subject'])
+        if self.matched(message):
+            return True, message.text
+        return False, None
+
     def fetch_next_email(self):
         mailbox = self.open_inbox()
         try:
             for message in mailbox.fetch_emails(self.name):
-                logging.debug('Fetched email; from: %s, subject: %s',
+                logging.debug('Matching email; from: %s, subject: %s',
                               message.headers['from'],
                               message.headers['subject'])
                 if self.matched(message):
@@ -81,3 +92,4 @@ class EmailFetcher(object):
 
 def email_fetcher(conf):
     return EmailFetcher(conf).fetch_next_email()
+    # return EmailFetcher(conf).fetch_by_uid(275)

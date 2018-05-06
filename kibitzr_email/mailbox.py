@@ -3,8 +3,7 @@ import imaplib
 from email import message_from_string
 from email.header import decode_header
 
-from .compat import lru_cache
-from .persistence import PersistentUids
+from .persistence import PersistentUids, EmailCache
 from .exceptions import UnexpectedResponse
 
 
@@ -13,22 +12,28 @@ logger = logging.getLogger(__name__)
 
 class CachingMailbox(object):
 
-    @classmethod
-    def get(cls, host, user, password):
-        instance = cls._get_for_user(host, user)
-        instance.login(password)
-        return instance
-
-    @staticmethod
-    @lru_cache(16)
-    def _get_for_user(host, user):
-        return CachingMailbox(host, user)
+    _instances = {}
 
     def __init__(self, host, user):
         logger.debug('Connecting to %s', host)
         self.mailbox = imaplib.IMAP4_SSL(host)
         self.user = user
         self._logged_in = False
+
+    @classmethod
+    def get(cls, host, user, password):
+        instance = cls._get_for_user(host, user)
+        instance.login(password)
+        return instance
+
+    @classmethod
+    def _get_for_user(cls, host, user):
+        key = (host, user)
+        instance = cls._instances.get(key)
+        if not instance:
+            instance = CachingMailbox(host, user)
+            cls._instances[key] = instance
+        return instance
 
     def login(self, password):
         if not self._logged_in:
@@ -38,13 +43,13 @@ class CachingMailbox(object):
             self._logged_in = True
 
     def fetch_emails(self, check_name):
-        uids = self.fetch_uids()
+        uids = self._fetch_uids()
         processed = PersistentUids(self.user, check_name)
         for uid in processed.only_new(uids):
             processed.save_uid(uid)
-            yield Message(uid, self.fetch_message(uid))
+            yield self.fetch_message(uid)
 
-    def fetch_uids(self):
+    def _fetch_uids(self):
         result, uids_response = self.mailbox.uid('search', None, "ALL")
         if result != 'OK':
             logger.error('Failed to fetch email UIDs: %s',
@@ -54,8 +59,20 @@ class CachingMailbox(object):
         logger.debug('Retrieved %d message uids', len(uids))
         return uids
 
-    @lru_cache(512)
     def fetch_message(self, uid):
+        raw_email = self._fetch_message(uid)
+        python_message = message_from_string(raw_email)
+        return Message(uid, python_message)
+
+    def _fetch_message(self, uid):
+        email_cache = EmailCache(self.user)
+        raw_email = email_cache.get(uid)
+        if raw_email is None:
+            raw_email = self._fetch_message_from_mailbox(uid)
+            email_cache[uid] = raw_email
+        return raw_email
+
+    def _fetch_message_from_mailbox(self, uid):
         result, raw_body = self.mailbox.uid('fetch', uid, '(RFC822)')
         if result != 'OK':
             logger.error('Failed to fetch email body: %s',
@@ -64,7 +81,7 @@ class CachingMailbox(object):
         raw_email = raw_body[0][1]
         logger.debug('Fetched message %s body (%s bytes)',
                      uid, len(raw_email))
-        return message_from_string(raw_email)
+        return raw_email
 
 
 class Message(object):
@@ -89,10 +106,10 @@ class Message(object):
         if maintype == 'multipart':
             for part in message.get_payload():
                 if part.get_content_maintype() == 'text':
-                    return part.get_payload()
+                    return part.get_payload(decode=True)
         elif maintype == 'text':
-            return message.get_payload()
+            return message.get_payload(decode=True)
         logging.warning(
             "Could not find text in the email, returning empty string"
         )
-        return ''
+        return u''

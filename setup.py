@@ -7,10 +7,6 @@ with open('requirements/base.in') as fp:
     install_requires = list(fp)
 
 
-if tuple(sys.version_info) < (3, 2):
-    install_requires.append('pylru')
-
-
 setup(
     name='kibitzr_email',
     version='0.0.1',
