@@ -72,3 +72,4 @@ CHANGELOG.rst
 .ipynb_checkpoints
 Session.vim
 emails.sqlite
+.coveralls.yml
