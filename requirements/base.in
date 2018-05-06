@@ -1,2 +1,2 @@
-kibitzr
+kibitzr==5.3.0a0  # temporary during initial release
 peewee
