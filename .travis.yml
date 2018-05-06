@@ -8,7 +8,7 @@ python:
   - 3.5
   - 3.6
 install:
-  - pip install -e . -r requirements/test.txt coveralls
+  - pip install -e . -r requirements/test.txt coveralls flake8
 before_script: flake8 kibitzr_email tests
 script: coverage run --source=kibitzr_email setup.py test
 after_success:
