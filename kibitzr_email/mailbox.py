@@ -49,6 +49,11 @@ class CachingMailbox(object):
             processed.save_uid(uid)
             yield self.fetch_message(uid)
 
+    def fetch_all(self):
+        uids = self._fetch_uids()
+        for uid in uids:
+            yield self.fetch_message(uid)
+
     def _fetch_uids(self):
         result, uids_response = self.mailbox.uid('search', None, "ALL")
         if result != 'OK':
@@ -85,20 +90,27 @@ class CachingMailbox(object):
 
 
 class Message(object):
+    """Convinient email message container"""
 
     def __init__(self, uid, message):
         self.headers = {}
-        for header in ['subject', 'to', 'from']:
+        for header in ['subject', 'to', 'date', 'from']:
+            # Fix utf-8 multiline subjects:
             text = decode_header(
                 message[header].replace('\r\n', ' ')
             )[0][0]
             self.headers[header] = text
         self.uid = uid
-        self.body = self.get_body_text(message)
+        # Fix line ending:
+        self.body = self.get_body_text(message).replace('\r\n', '\n')
 
     @property
     def text(self):
-        return self.headers['subject'] + '\n' + self.body
+        head = "\n".join([
+            "{0}: {1}".format(key.title(), self.headers[key])
+            for key in ('from', 'date', 'subject')
+        ])
+        return head + '\n\n' + ('-'*40) + '\n\n' + self.body
 
     @staticmethod
     def get_body_text(message):

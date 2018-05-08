@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import sys
 from setuptools import setup
 
 
@@ -24,7 +23,10 @@ setup(
     entry_points={
         'kibitzr.fetcher': [
             'fetcher=kibitzr_email:EmailPromoter',
-        ]
+        ],
+        'kibitzr.cli': [
+            'cli=kibitzr_email.cli:bind_commands',
+        ],
     },
     include_package_data=True,
     install_requires=install_requires,
