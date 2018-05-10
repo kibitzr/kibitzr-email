@@ -126,7 +126,6 @@ class Message(object):
         self.uid = uid
         # Fix line ending:
         self.body = (self.get_body_text(message)
-                     .decode('utf-8', 'replace')
                      .replace(u'\r\n', u'\n'))
 
     @property
@@ -137,18 +136,28 @@ class Message(object):
         ])
         return head + u'\n\n' + (u'-'*40) + u'\n\n' + self.body
 
-    @staticmethod
-    def get_body_text(message):
+    @classmethod
+    def get_body_text(cls, message):
         """Return body text as bytes"""
         maintype = message.get_content_maintype()
         if maintype == 'multipart':
             for part in message.get_payload():
                 if part.get_content_maintype() == 'text':
-                    # Note: decode=True is only for base64, result is still bytes
-                    return part.get_payload(decode=True)
+                    return cls.decode_with_charset(part)
         elif maintype == 'text':
-            return message.get_payload(decode=True)
+            return cls.decode_with_charset(message)
         logging.warning(
             "Could not find text in the email, returning empty string"
         )
         return ''
+
+    @staticmethod
+    def decode_with_charset(entity):
+        # Note: decode=True is only for base64, result is still bytes
+        payload_bytes = entity.get_payload(decode=True)
+        charsets = entity.get_charsets()
+        if charsets:
+            encoding = charsets[0]
+        else:
+            encoding = 'utf-8'
+        return payload_bytes.decode(encoding)
