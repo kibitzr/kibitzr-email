@@ -1,10 +1,13 @@
+import socket
 import logging
 import imaplib
+import functools
+
 from email import message_from_string
 from email.header import decode_header
 
 from .persistence import PersistentUids, EmailCache
-from .exceptions import UnexpectedResponse
+from .exceptions import UnexpectedResponse, NetworkOutage
 
 
 logger = logging.getLogger(__name__)
@@ -14,33 +17,42 @@ class CachingMailbox(object):
 
     _instances = {}
 
-    def __init__(self, host, user):
-        logger.debug('Connecting to %s', host)
-        self.mailbox = imaplib.IMAP4_SSL(host)
+    def __init__(self, host, user, password):
+        self.host = host
         self.user = user
-        self._logged_in = False
+        self.password = password
+        self.login()
+        self._fetch_uids = self.relogin_on_error(
+            self._fetch_uids_optimistic
+        )
+        self._fetch_message_from_mailbox = self.relogin_on_error(
+            self._fetch_message_from_mailbox_optimistic
+        )
 
     @classmethod
     def get(cls, host, user, password):
-        instance = cls._get_for_user(host, user)
-        instance.login(password)
+        instance = cls._get_for_user(host, user, password)
         return instance
 
     @classmethod
-    def _get_for_user(cls, host, user):
+    def _get_for_user(cls, host, user, password):
         key = (host, user)
         instance = cls._instances.get(key)
         if not instance:
-            instance = CachingMailbox(host, user)
+            instance = CachingMailbox(host, user, password)
             cls._instances[key] = instance
         return instance
 
-    def login(self, password):
-        if not self._logged_in:
-            logger.debug('Logging in as %s', self.user)
-            self.mailbox.login(self.user, password)
-            self.mailbox.select("inbox")
-            self._logged_in = True
+    def login(self):
+        logger.debug('Connecting to %s', self.host)
+        try:
+            self.mailbox = imaplib.IMAP4_SSL(self.host)
+        except socket.gaierror:
+            # Network outage, no big deal
+            raise NetworkOutage
+        logger.debug('Logging in as %s', self.user)
+        self.mailbox.login(self.user, self.password)
+        self.mailbox.select("inbox")
 
     def fetch_emails(self, check_name):
         uids = self._fetch_uids()
@@ -54,7 +66,18 @@ class CachingMailbox(object):
         for uid in uids:
             yield self.fetch_message(uid)
 
-    def _fetch_uids(self):
+    def relogin_on_error(self, func):
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except socket.error:
+                logging.debug("Socket error occured, reconnecting...")
+                self.login()
+                return func(*args, **kwargs)
+        return wrapped
+
+    def _fetch_uids_optimistic(self):
         result, uids_response = self.mailbox.uid('search', None, "ALL")
         if result != 'OK':
             logger.error('Failed to fetch email UIDs: %s',
@@ -77,7 +100,7 @@ class CachingMailbox(object):
             email_cache[uid] = raw_email
         return raw_email
 
-    def _fetch_message_from_mailbox(self, uid):
+    def _fetch_message_from_mailbox_optimistic(self, uid):
         result, raw_body = self.mailbox.uid('fetch', uid, '(RFC822)')
         if result != 'OK':
             logger.error('Failed to fetch email body: %s',
@@ -97,31 +120,35 @@ class Message(object):
         for header in ['subject', 'to', 'date', 'from']:
             # Fix utf-8 multiline subjects:
             text = decode_header(
-                message[header].replace('\r\n', ' ')
+                message[header].replace(u'\r\n', u' ')
             )[0][0]
             self.headers[header] = text
         self.uid = uid
         # Fix line ending:
-        self.body = self.get_body_text(message).replace('\r\n', '\n')
+        self.body = (self.get_body_text(message)
+                     .decode('utf-8', 'replace')
+                     .replace(u'\r\n', u'\n'))
 
     @property
     def text(self):
-        head = "\n".join([
-            "{0}: {1}".format(key.title(), self.headers[key])
+        head = u'\n'.join([
+            u'{0}: {1}'.format(key.title(), self.headers[key])
             for key in ('from', 'date', 'subject')
         ])
-        return head + '\n\n' + ('-'*40) + '\n\n' + self.body
+        return head + u'\n\n' + (u'-'*40) + u'\n\n' + self.body
 
     @staticmethod
     def get_body_text(message):
+        """Return body text as bytes"""
         maintype = message.get_content_maintype()
         if maintype == 'multipart':
             for part in message.get_payload():
                 if part.get_content_maintype() == 'text':
+                    # Note: decode=True is only for base64, result is still bytes
                     return part.get_payload(decode=True)
         elif maintype == 'text':
             return message.get_payload(decode=True)
         logging.warning(
             "Could not find text in the email, returning empty string"
         )
-        return u''
+        return ''

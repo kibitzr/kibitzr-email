@@ -6,7 +6,7 @@ from kibitzr.conf import settings
 
 from .constants import EMAIL_SSL_HOST, CONF_KEY, DOWNLOAD_DIR
 from .mailbox import CachingMailbox
-from .exceptions import UnexpectedResponse
+from .exceptions import UnexpectedResponse, NetworkOutage
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,11 @@ class EmailFetcher(object):
         self.load_conf()
 
     def fetch_next_email(self):
-        mailbox = self.open_inbox()
+        try:
+            mailbox = self.open_inbox()
+        except NetworkOutage:
+            logger.warning("Network is down, skipping fetch")
+            return False, None
         try:
             if self.debug_uid:
                 message = mailbox.fetch_message(self.debug_uid)
