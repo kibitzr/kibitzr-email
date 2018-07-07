@@ -8,7 +8,7 @@ with open('requirements/base.in') as fp:
 
 setup(
     name='kibitzr_email',
-    version='0.0.1',
+    version='1.0.0',
     description="Email fetcher for Kibitzr",
     long_description="TBD",
     author="Peter Demin",
